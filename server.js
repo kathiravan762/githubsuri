@@ -5,15 +5,15 @@ const path = require('path');
 require('dotenv').config();
 const dns = require('dns');
 dns.setServers(['8.8.8.8', '1.1.1.1']);
-app.get("/", (req, res) => {
-  res.send("Backend API is Working 🚀");
-});
+
 const memoriesRouter = require('./routes/memories');
 const profileRouter = require('./routes/profile');
 const aiRouter = require('./routes/ai');
 
 const app = express();
-
+app.get("/", (req, res) => {
+  res.send("Backend API is Working 🚀");
+});
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
