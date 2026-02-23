@@ -5,7 +5,9 @@ const path = require('path');
 require('dotenv').config();
 const dns = require('dns');
 dns.setServers(['8.8.8.8', '1.1.1.1']);
-
+app.get("/", (req, res) => {
+  res.send("Backend API is Working 🚀");
+});
 const memoriesRouter = require('./routes/memories');
 const profileRouter = require('./routes/profile');
 const aiRouter = require('./routes/ai');
