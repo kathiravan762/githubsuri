@@ -31,7 +31,15 @@ app.use('/api/profile', profileRouter);
 app.use('/api/ai', aiRouter);
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
+app.post("/api/admin/login", (req, res) => {
+  const { secret } = req.body;
 
+  if (secret === process.env.ADMIN_SECRET) {
+    return res.json({ success: true });
+  }
+
+  res.status(401).json({ success: false });
+});
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB:', err));
