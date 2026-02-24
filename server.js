@@ -1,6 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
+
 const path = require('path');
 require('dotenv').config();
 const dns = require('dns');
@@ -14,7 +14,13 @@ const app = express();
 app.get("/", (req, res) => {
   res.send("Backend API is Working 🚀");
 });
-app.use(cors({ origin: '*' }));
+const cors = require("cors");
+
+app.use(cors({
+  origin: "https://my-life-memories-frontend.onrender.com",
+  credentials: true
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
