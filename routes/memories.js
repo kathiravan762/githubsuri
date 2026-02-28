@@ -14,17 +14,7 @@ cloudinary.config({
 });
 
 
-const storage = multer.memoryStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../uploads/memories');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  }
-});
+const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
 const adminGuard = (req, res, next) => {
@@ -111,7 +101,7 @@ router.delete('/:id', adminGuard, async (req, res) => {
   try {
     const memory = await Memory.findById(req.params.id);
     if (!memory) return res.status(404).json({ message: 'Not found' });
-  await cloudinary.uploader.destroy(memory.photoUrl);
+await Memory.findByIdAndDelete(req.params.id);
     await Memory.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch { res.status(500).json({ message: 'Server error' }); }
