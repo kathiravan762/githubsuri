@@ -3,9 +3,18 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require("cloudinary").v2;
 const Memory = require('../models/Memory');
 
-const storage = multer.diskStorage({
+// Cloudinary config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+
+const storage = multer.memoryStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '../uploads/memories');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -52,17 +61,41 @@ router.get('/timeline', async (req, res) => {
 router.post('/', adminGuard, upload.single('photo'), async (req, res) => {
   try {
     const { title, description, date, tags, location, mood, aiCaption, color } = req.body;
-    if (!req.file) return res.status(400).json({ message: 'Photo required' });
-    const memory = new Memory({
-      title, description, date: new Date(date),
-      photoUrl: `/uploads/memories/${req.file.filename}`,
-      tags: tags ? JSON.parse(tags) : [],
-      location, mood: mood || 'happy', aiCaption: aiCaption || '',
-      color: color || '#9b59ff'
-    });
-    await memory.save();
-    res.status(201).json(memory);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Photo required' });
+    }
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload_stream(
+      { folder: "memories" },
+      async (error, result) => {
+        if (error) {
+          return res.status(500).json({ message: error.message });
+        }
+
+        const memory = new Memory({
+          title,
+          description,
+          date: new Date(date),
+          photoUrl: result.secure_url,
+          tags: tags ? JSON.parse(tags) : [],
+          location,
+          mood: mood || 'happy',
+          aiCaption: aiCaption || '',
+          color: color || '#9b59ff'
+        });
+
+        await memory.save();
+        res.status(201).json(memory);
+      }
+    );
+
+    result.end(req.file.buffer);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // ADMIN - Update
@@ -78,8 +111,7 @@ router.delete('/:id', adminGuard, async (req, res) => {
   try {
     const memory = await Memory.findById(req.params.id);
     if (!memory) return res.status(404).json({ message: 'Not found' });
-    const filePath = path.join(__dirname, '..', memory.photoUrl);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  await cloudinary.uploader.destroy(memory.photoUrl);
     await Memory.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch { res.status(500).json({ message: 'Server error' }); }

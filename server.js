@@ -7,6 +7,7 @@ const dns = require('dns');
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 const memoriesRouter = require('./routes/memories');
+console.log("Cloud:", process.env.CLOUDINARY_CLOUD_NAME);
 const profileRouter = require('./routes/profile');
 const aiRouter = require('./routes/ai');
 
