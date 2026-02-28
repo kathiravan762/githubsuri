@@ -1,19 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const Profile = require('../models/Profile');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../uploads/profile');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => cb(null, 'profile-' + Date.now() + path.extname(file.originalname))
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+const Profile = require('../models/Profile');
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage, 
+  limits: { fileSize: 10 * 1024 * 1024 } 
+});
 
 // PUBLIC - Get profile
 router.get('/', async (req, res) => {
@@ -42,8 +42,41 @@ router.put('/', upload.fields([
     const update = { name, bio, tagline, musicEnabled: musicEnabled === 'true', updatedAt: new Date() };
     if (dateOfBirth) update.dateOfBirth = new Date(dateOfBirth);
     if (socialLinks) update.socialLinks = typeof socialLinks === 'string' ? JSON.parse(socialLinks) : socialLinks;
-    if (req.files?.profilePhoto) update.profilePhoto = `/uploads/profile/${req.files.profilePhoto[0].filename}`;
-    if (req.files?.backgroundMusic) update.backgroundMusic = `/uploads/profile/${req.files.backgroundMusic[0].filename}`;
+    // Upload profile photo
+if (req.files?.profilePhoto) {
+  const photoFile = req.files.profilePhoto[0];
+
+  const photoUpload = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "profile" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(photoFile.buffer);
+  });
+
+  update.profilePhoto = photoUpload.secure_url;
+}
+
+// Upload background music
+if (req.files?.backgroundMusic) {
+  const musicFile = req.files.backgroundMusic[0];
+
+  const musicUpload = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "profile_music", resource_type: "auto" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(musicFile.buffer);
+  });
+
+  update.backgroundMusic = musicUpload.secure_url;
+}
 
     let profile = await Profile.findOneAndUpdate({}, update, { new: true, upsert: true });
     res.json(profile);
